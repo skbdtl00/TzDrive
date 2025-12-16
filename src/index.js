@@ -3,6 +3,7 @@ const multer = require('multer');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
+const rateLimit = require('express-rate-limit');
 const bcrypt = require('bcryptjs');
 const config = require('./config');
 const db = require('./db');
@@ -29,6 +30,20 @@ const upload = multer({
   limits: { fileSize: config.maxFileSizeBytes },
 });
 
+const sensitiveLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const authenticatedLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 500,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
@@ -36,7 +51,7 @@ app.get('/health', (req, res) => {
   });
 });
 
-app.post('/admin/users', adminMiddleware, (req, res) => {
+app.post('/admin/users', sensitiveLimiter, adminMiddleware, (req, res) => {
   const { email, password, limitBytes } = req.body;
   if (!email || !password) {
     return res.status(400).json({ message: 'email and password are required' });
@@ -59,7 +74,7 @@ app.post('/admin/users', adminMiddleware, (req, res) => {
   }
 });
 
-app.post('/auth/login', (req, res) => {
+app.post('/auth/login', sensitiveLimiter, (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
     return res.status(400).json({ message: 'email and password are required' });
@@ -88,7 +103,7 @@ app.post('/auth/login', (req, res) => {
   });
 });
 
-app.get('/me', authMiddleware, (req, res) => {
+app.get('/me', authenticatedLimiter, authMiddleware, (req, res) => {
   res.json({
     id: req.user.id,
     email: req.user.email,
@@ -103,12 +118,13 @@ function getUsage(userId) {
   return (fresh && fresh.usedBytes) || 0;
 }
 
-app.get('/files', authMiddleware, (req, res) => {
+app.get('/files', authenticatedLimiter, authMiddleware, (req, res) => {
   res.json(db.listFilesByUser(req.user.id));
 });
 
 app.post(
   '/files/upload',
+  authenticatedLimiter,
   authMiddleware,
   upload.single('file'),
   async (req, res) => {
@@ -141,7 +157,7 @@ app.post(
   }
 );
 
-app.get('/files/:id', authMiddleware, async (req, res) => {
+app.get('/files/:id', authenticatedLimiter, authMiddleware, async (req, res) => {
   const file = db.findFileById(req.params.id);
   if (!file || file.userId !== req.user.id) {
     return res.status(404).json({ message: 'File not found' });
@@ -162,7 +178,7 @@ app.get('/files/:id', authMiddleware, async (req, res) => {
   }
 });
 
-app.delete('/files/:id', authMiddleware, async (req, res) => {
+app.delete('/files/:id', authenticatedLimiter, authMiddleware, async (req, res) => {
   const file = db.findFileById(req.params.id);
   if (!file || file.userId !== req.user.id) {
     return res.status(404).json({ message: 'File not found' });
@@ -176,7 +192,7 @@ app.delete('/files/:id', authMiddleware, async (req, res) => {
   }
 });
 
-app.patch('/files/:id', authMiddleware, (req, res) => {
+app.patch('/files/:id', authenticatedLimiter, authMiddleware, (req, res) => {
   const { filename } = req.body;
   const file = db.findFileById(req.params.id);
   if (!file || file.userId !== req.user.id) {
