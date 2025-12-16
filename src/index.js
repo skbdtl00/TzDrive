@@ -3,6 +3,7 @@ const multer = require('multer');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
+const bcrypt = require('bcryptjs');
 const config = require('./config');
 const db = require('./db');
 const authMiddleware = require('./middleware/auth');
@@ -67,7 +68,6 @@ app.post('/auth/login', (req, res) => {
   if (!user) {
     return res.status(401).json({ message: 'Invalid credentials' });
   }
-  const bcrypt = require('bcryptjs');
   if (!bcrypt.compareSync(password, user.passwordHash)) {
     return res.status(401).json({ message: 'Invalid credentials' });
   }
@@ -99,8 +99,8 @@ app.get('/me', authMiddleware, (req, res) => {
 });
 
 function getUsage(userId) {
-  const files = db.listFilesByUser(userId);
-  return files.reduce((acc, f) => acc + (f.size || 0), 0);
+  const fresh = db.findUserById(userId);
+  return (fresh && fresh.usedBytes) || 0;
 }
 
 app.get('/files', authMiddleware, (req, res) => {
