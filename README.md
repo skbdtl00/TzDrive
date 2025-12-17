@@ -24,6 +24,19 @@ npm start
 
 The server listens on `PORT` (default `3000`).
 
+## Frontend (Next.js)
+
+Located in `web/` (ภาษาไทย, ฟอนต์ Anuphan, Shadcn/ui, Lucide icons).
+
+```bash
+cd web
+npm install
+cp .env.example .env    # ตั้งค่า NEXT_PUBLIC_API_URL ให้ตรงกับ backend
+npm run dev             # หรือ npm run build && npm start
+```
+
+หน้าเว็บมีฟอร์มเข้าสู่ระบบ (JWT), แสดงโควต้า/การใช้งานต่อผู้ใช้, อัพโหลด/ดาวน์โหลด/เปลี่ยนชื่อ/ลบไฟล์ และแสดง backend storage backend จาก `/health`.
+
 ## API (brief)
 
 - `POST /admin/users` (header `x-admin-secret`) – create user `{ email, password, limitBytes? }`

@@ -3,3 +3,6 @@ storage
 data
 .env
 npm-debug.log
+.next
+web/.next
+web/.env
